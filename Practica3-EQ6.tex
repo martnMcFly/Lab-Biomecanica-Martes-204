@@ -1,0 +1,300 @@
+\documentclass{article}
+\setlength{\parskip}{5pt} % esp. entre parrafos
+\setlength{\parindent}{0pt} % esp. al inicio de un parrafo
+\usepackage{amsmath} % mates
+\usepackage[sort&compress,numbers]{natbib} % referencias
+\usepackage{url} % que las URLs se vean lindos
+\usepackage[top=25mm,left=20mm,right=20mm,bottom=25mm]{geometry} % margenes
+\usepackage{hyperref} % ligas de URLs
+\usepackage{graphicx} % poner figuras
+\usepackage[spanish]{babel} % otros idiomas
+\usepackage[utf8]{inputenc}
+\author{EQUIPO 6\\Christopher Alejandro Monsivais Ramos   1899218\\
+Alessandra González Torres  1895846\\
+Angela Itzel Rodríguez Torres   1925284\\
+Abdiel Isaac Rodríguez Pinales  1842044\\
+Martin Alejandro Villanueva Cortes  1870820\\
+Alejandro Sebastian Marin Cota  1814201} % author
+\title{Laboratorio de Biomecánica\\Pr\'{a}ctica 3\\Diseño de la estructura de un panor\'{a}mico} % titulo
+\date{\today}
+
+\begin{document} % inicia contenido
+
+\maketitle % cabecera
+
+
+
+\section{Marco Te\'{o}rico}\label{intro} % seccion y etiqueta
+La optimización topológica es una técnica englobada dentro del campo de análisis estructural. Se basa en el análisis mecánico de un componente o estructura. Su principal objetivo es el aligeramiento estructural manteniendo las funcionalidades mecánicas del componente objetivo. A diferencia de otros tipos de optimización, la optimización topológica ofrece un nuevo concepto de diseño estructural enfocado a aquellas aplicaciones donde el peso del componente es crucial (por ejemplo, la industria aeroespacial).
+\\
+Gracias a los nuevos métodos computacionales, es posible llevar la optimización a un nivel más complejo de análisis a nivel estático, dinámico, plástico, modal o de impacto, entre otros, los cuales pueden considerarse durante el proceso de optimización.
+\\
+El desarrollo de esta metodología tiene un amplio campo de aplicación para las tecnologías de fabricación aditiva, como por ejemplo la fabricación SLM (Selective Laser Melting), debido a las grandes posibilidades en términos de diseño (geometrías muy complejas).\cite{ff2}
+ 
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=65mm]{images/Forma geometrica.jpg} % archivo
+    \caption{Ejemplo de la forma geom\'{e}trica}
+\end{figure}
+
+\newpage
+
+\section{Estado del arte}
+El artículo presenta una implementación compacta en Matlab de un código de optimización topológica para la minimización de la conformidad de estructuras cargadas estáticamente. El número total de líneas de entrada de Matlab es de 99 incluyendo el optimizador y la subrutina de elementos finitos. Las 99 líneas están divididas en 36 líneas para el programa principal, 12 líneas para el optimizador basado en criterios de optimización, 16 líneas para un filtro de dependencia de malla y 35 líneas para el código de elementos finitos. De hecho, excluyendo las líneas de comentario y las asociadas a la salida y a analisis de elemenios tintos se anserva que solo se necesitan 4u ineas de entrada, de Matlab para resolver un problema de optimización topológica bien planteado. Añadiendo tres líneas adicionales, el programa puede resolver problemas con múltiples casos de carga. El código está pensado para fines educativos.
+\\
+
+\section{Propuesta de diseño de la geometría, alcances y limitaciones}
+Actualmente, su empresa necesita contar con los mejores anuncios para mostrar los productos y servicios que tiene disponibles. De esta manera, podrá atraer a usuarios que se convertirán en futuros clientes y colaboraran a aumentar su visibilidad. Es por ello, que cuando usted contrata los servicios de diseño y construcción de anuncios panorámicos, está dando un paso muy importante para potenciar su marca.
+\\
+Las estructuras panorámicas son soportes en donde pueden ir ubicados diferentes tipos de anuncios publicitarios. La ventaja de estas estructuras es que pueden ir ubicadas en diferentes paisajes urbanos con el fin de promocionar un producto o servicio.
+\\
+Ahora, para atraer la atención de los usuarios y futuros clientes es necesario crear una publicidad muy llamativa, y de ese objetivo nos encargamos nosotros. Por consiguiente, nos guiaremos por las normativas correspondientes para colocar la construcción del panorámico en un lugar apropiado. Los materiales adecuados para la construcción de panorámicos que pueden ser elaborados en plástico, lona, telas, PVC, acrílico o metal. Aunque también, puede optar por panorámicos electrónicos y agregarle elementos como luces, e incluso música.
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=85mm]{images/Propuesta.png} % archivo
+    \caption{}
+\end{figure}
+
+\newpage
+
+\section{Procedimiento de la programaci\'{o}n}
+Codigo que se utiliza:
+\\
+\begin{verbatim}
+
+%%%% A 99 LINE TOPOLOGY OPTIMIZATION CODE BY OLESIGMUND, OCTOBER 1999 %%%
+function topp3(nelx,nely,volfrac,penal,rmin,passive);
+% INITIALIZE
+x(1:nely,1:nelx) = volfrac;
+loop = 0;
+for ely = 1:nely
+ for elx = 41:nelx 
+ if elx - 20 < (ely/2); 
+  passive(ely,elx) = 0;
+ else
+     passive(ely,elx)=1;
+ end
+ end
+end
+x(find (passive))=0.001;
+change = 1.;
+% START ITERATION
+while change > 0.01
+loop = loop + 1;
+xold = x;
+% FE-ANALYSIS
+ [U]=FE(nelx,nely,x,penal);
+%13 OBJECTIVE FUNCTION AND SENSITIVITY ANALYSIS
+ [KE] = lk;
+ c = 0.;
+ for ely = 1:nely
+ for elx = 1:nelx
+ n1 = (nely+1)*(elx-1)+ely;
+ n2 = (nely+1)* elx +ely; %19
+ dc(ely,elx) = 0.;
+ for i = 1:5
+ Ue = U([2*n1-1;2*n1; 2*n2-1;2*n2; 2*n2+1; 2*n2+2; 
+2*n1+1;2*n1+2],1);
+ c = c + x(ely,elx)^penal*Ue'*KE*Ue;
+ dc(ely,elx) = dc(ely,elx)-penal*x(ely,elx)^(penal-1)*Ue'*KE*Ue;
+ end
+ end
+end
+%25 FILTERING OF SENSITIVITIES
+[dc] = check(nelx,nely,rmin,x,dc);
+%27 DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+[x] = OC(nelx,nely,x,volfrac,dc,passive);
+%29 PRINT RESULTS
+change = max(max(abs(x-xold)));
+disp(['It.:' sprintf('%4i',loop) 'Obj.:' sprintf('%10.4f',c) ...
+' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ...
+' ch.: ' sprintf('%6.3f',change )])
+% PLOT DENSITIES
+colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
+end
+%40 %%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%
+function [xnew]=OC(nelx,nely,x,volfrac,dc,passive)
+l1 = 0; l2 = 100000; move = 0.2;
+while (l2-l1 > 1e-4)
+lmid = 0.5*(l2+l1);
+xnew = max(0.001,max(x-move,min(1.,min(x+move,x.*sqrt(-dc./lmid)))));
+xnew(find(passive)) = 0.001; 
+if sum(sum(xnew)) - volfrac*nelx*nely > 0;
+l1 = lmid;
+else
+l2 = lmid;
+end
+end
+%%%%%%%%%% MESH-INDEPENDENCY FILTER %%%%%%%%%%%
+function [dcn]=check(nelx,nely,rmin,x,dc)
+dcn=zeros(nely,nelx);
+for i = 1:nelx
+for j = 1:nely
+sum=0.0;
+for k = max(i-round(rmin),1):min(i+round(rmin),nelx)
+for l = max(j-round(rmin),1):min(j+round(rmin), nely)
+fac = rmin-sqrt((i-k)^2+(j-l)^2);
+sum = sum+max(0,fac);
+dcn(j,i) = dcn(j,i) + max(0,fac)*x(l,k)*dc(l,k);
+end
+end
+dcn(j,i) = dcn(j,i)/(x(j,i)*sum);
+end
+end
+%65 %%%%%%%%% FE-ANALYSIS %%%%%%%%%%%%
+function [U]=FE(nelx,nely,x,penal)
+[KE] = lk;
+K = sparse(2*(nelx+1)*(nely+1), 2*(nelx+1)*(nely+1));
+F = sparse(2*(nely+1)*(nelx+1),5); U =zeros(2*(nely+1)*(nelx+1),5);
+for ely = 1:nely
+for elx = 1:nelx
+n1 = (nely+1)*(elx-1)+ely;
+n2 = (nely+1)* elx +ely;
+edof = [2*n1-1; 2*n1; 2*n2-1; 2*n2; 2*n2+1;2*n2+2;2*n1+1; 2*n1+2];
+K(edof,edof) = K(edof,edof) + x(ely,elx)^penal*KE;
+end
+end
+% DEFINE LOADSAND SUPPORTS(HALF MBB-BEAM)
+F(2*nelx*(nely+1)+2,1) = 1;
+F(2*nelx*(nely+1)+(nely/4),2) = 1;
+F(2*nelx*(nely+1)+(nely/2),3) = 1;
+F(2*nelx*(nely+1)+(nely),4) = 1;
+F(2*nelx*(nely+1)+(nely*1.2),5) = 1;
+fixeddofs =2*(nely+1):2*(nely+1):2*(nelx+1)*(nely+1);
+alldofs = [1:2*(nely+1)*(nelx+1)];
+freedofs = setdiff(alldofs,fixeddofs);
+% SOLVING 127
+U(freedofs,:) = K(freedofs,freedofs) \F(freedofs,:);
+U(fixeddofs,:)= 0;
+%%%%%%%%%% ELEMENT STIFFNESS MATRIX %%%%%%%
+function [KE]=lk
+E = 1.;
+nu = 0.3;
+k=[ 1/2-nu/6 1/8+nu/8 -1/4-nu/12 -1/8+3*nu/8 ...
+-1/4+nu/12 -1/8-nu/8 nu/6 1/8-3*nu/8];
+KE = E/(1-nu^2)*[ k(1) k(2) k(3) k(4) k(5) k(6) k(7) k(8)
+k(2) k(1) k(8) k(7) k(6) k(5) k(4) k(3)
+k(3) k(8) k(1) k(6) k(7) k(4) k(5) k(2)
+k(4) k(7) k(6) k(1) k(8) k(3) k(2) k(5)
+k(5) k(6) k(7) k(8) k(1) k(2) k(3) k(4)
+k(6) k(5) k(4) k(3) k(2) k(1) k(8) k(7)
+k(7) k(4) k(5) k(2) k(3) k(8) k(1) k(6)
+k(8) k(3) k(2) k(5) k(4) k(7) k(6) k(1)];
+
+
+\end{verbatim}
+
+
+\section{Pasos que seguir para la programación en MATLAB}
+\begin{enumerate}
+\item   Abrir MATLAB y esperar a que éste se inicialice, y muestre su pantalla principal. 
+
+\includegraphics[width=60mm]{images/MatLab.png} % archivo
+\includegraphics[width=110mm]{images/MatLab1.png} % archivo\\
+\\
+\\
+\newpage
+\item   Una vez en la pantalla de inicio de MATLAB es necesario abrir un archivo nuevo en el editor de texto, dentro del cual será necesario escribir el código proporcionado.
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=73mm]{images/MatLab2.png} % archivo
+    \caption{Codigo de Matlab P1}
+\end{figure}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=73mm]{images/MatLab3.png} % archivo
+    \caption{Codigo de Matlab P2}
+\end{figure}
+
+\newpage
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=72mm]{images/MatLab4.png} % archivo
+    \caption{Codigo de Matlab P3}
+\end{figure}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=72mm]{images/MatLab5.png} % archivo
+    \caption{Codigo de Matlab P4}
+\end{figure}
+
+\newpage
+
+\item   El siguiente paso consiste en salvar el archivo. Se recomienda que el archivo se guarde en el directorio raíz de MATLAB que por default muestra. En caso de no ser así, debemos de navegar a “Mis Documentos  MATLAB” y guardar ahí el script recién creado. 
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=40mm]{images/MatLab6.png} % archivo
+    \caption{Como salvar un archivo}
+\end{figure}
+
+
+\item   Una vez guardado el script en el directorio correcto, solo hace falta corroborar que el intérprete de MATLAB se encuentre en el mismo directorio. Esto se hace desde la pantalla principal de MATLAB. Para la versión R2019a del software, el directorio actual del intérprete se encuentra en la barra de herramientas superior.
+
+
+
+\item   Por último, hay que ejecutar el programa desde la ventana de comando de MATLAB. El código que se proporcionó viene preparado para optimizar un dominio de diseño, este caso en particular es evaluado y simulado cuando escribimos desde la línea de comando de MATLAB “topp1(40,80,0.2,3.0,0.5,0.001)”.
+\begin{itemize}
+  \item nelx y nely: Son el número de elementos en las direcciones horizontales (x) y verticales (y). 
+   \item	volfrac: Es la fracción de volumen. 
+   \item	penal: Es el poder de penalización. 
+   \item	rmi: Es el tamaño del filtro (dividido por el tamaño del elemento).
+\end{itemize}
+
+\end{enumerate}
+
+\newpage
+
+\section{Resultados de la optimización}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=85mm]{images/R1.png} % archivo
+    \caption{Pantalla de MatLab con c\'{o}digo y figura}
+\end{figure}
+
+
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=80mm]{images/R2.png} % archivo
+    \caption{Figura que se crea en MatLab}
+\end{figure}
+
+\newpage
+\newpage
+
+\section{Conclusiones}
+
+Christopher Alejandro Monsivais Ramos: 
+\\Esta práctica nos ayudo principalmente a seguir practicando o reforzando los conocimientos sobre el código de optimización topológica que se implementó desde la práctica 1, solo que esta vez se le realizaron distintos cambios para poder obtener como resultado la pieza final.
+\\
+\\
+Alessandra Gonzalez Torres: 
+\\En esta práctica continuamos utilizando el código original que se vio en la primera práctica, solo que se tuvieron que hacer ciertas modificaciones para que se acoplara a lo pedido en la práctica actual. También se tuvieron que cambiar los valores que antes se estaban utilizando para poder crear la pieza final, como se muestra en la ultima imagen.
+\\
+\\
+Angela Itzel Rodriguez Torres: 
+\\Los resultados presentados en la sección anterior incluyen los tres aspectos que proporciona el análisis estructural del panorámico. En este caso, los valores que se obtienen nos permiten darnos cuenta de cómo responde al estar en la intemperie con las condiciones del problema, el cual presenta valores que no son críticos para llevarlo a una situación de falla en la estructura, por lo que al soportar las cargas que se ejercen sobre el espectacular no se corre el riesgo de una caída del mismo debido a las condiciones mencionadas.
+\\
+\\
+Abdiel Isaac Rodriguez Piñales: 
+\\Se concluye que los avances de tecnología han sido tales que se ha conseguido la optimización de los nuevos diseños. Como en el método de optimización topológica la cual sirve para reducir los materiales a utilizar los nuevos diseños. Esto ha sido útil en áreas como la ingeniería aeroespacial donde es crucial el volumen y materia de los componentes a utilizar. Todo es gracias al avance en el desarrollo de software.
+\\
+\\
+Alejandro Sebastian Marin Cota: 
+\\En conclusión, esta actividad nos permite apreciar una vez más la flexibilidad de usar este código. Mirando la viga, luego el cuadro de la bicicleta y ahora la estructura general, puede usar la función de simulación para: Evalúa físicamente los materiales y geometrías a utilizar, pero tiene la ventaja de no utilizar demasiados recursos.
+\\
+\\
+Mart\'{i}n Alejandro Villanueva Cortes:
+\\Para esta practica hemos seguido practicando con el mismo tipo de programación para realización de las piezas que se nos dan, como lo es en esta practica y la anterior solo se modifican un poco estos ya que son la base para seguir desarrollando otras piezas que se nos puedan dar en otras prácticas.
+
+\bibliography{bib}
+\bibliographystyle{plainnat}
+
+\end{document}
