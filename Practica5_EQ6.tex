@@ -1,0 +1,491 @@
+\documentclass{article}
+\setlength{\parskip}{5pt} % esp. entre parrafos
+\setlength{\parindent}{0pt} % esp. al inicio de un parrafo
+\usepackage{amsmath} % mates
+\usepackage[sort&compress,numbers]{natbib} % referencias
+\usepackage{url} % que las URLs se vean lindos
+\usepackage[top=25mm,left=20mm,right=20mm,bottom=25mm]{geometry} % margenes
+\usepackage{hyperref} % ligas de URLs
+\usepackage{graphicx} % poner figuras
+\usepackage[spanish]{babel} % otros idiomas
+\usepackage[utf8]{inputenc}
+\author{EQUIPO 6\\Christopher Alejandro Monsivais Ramos   1899218\\
+Alessandra González Torres  1895846\\
+Angela Itzel Rodríguez Torres   1925284\\
+Abdiel Isaac Rodríguez Pinales  1842044\\
+Martin Alejandro Villanueva Cortes  1870820\\
+Alejandro Sebastian Marin Cota  1814201} % author
+\title{Laboratorio de Biomecánica\\Pr\'{a}ctica \\Optimizaci\'{o}n de una pr\'{o}tesis de pie} % titulo
+\date{\today}
+
+\begin{document} % inicia contenido
+
+\maketitle % cabecera
+
+\section{Marco Te\'{o}rico}\label{intro} % seccion y etiqueta
+La optimización topológica es una técnica englobada dentro del campo de análisis estructural. Se basa en el análisis mecánico de un componente o estructura. Su principal objetivo es el aligeramiento estructural manteniendo las funcionalidades mecánicas del componente objetivo. A diferencia de otros tipos de optimización, la optimización topológica ofrece un nuevo concepto de diseño estructural enfocado a aquellas aplicaciones donde el peso del componente es crucial (por ejemplo, la industria aeroespacial).
+\\
+Gracias a los nuevos métodos computacionales, es posible llevar la optimización a un nivel más complejo de análisis a nivel estático, dinámico, plástico, modal o de impacto, entre otros, los cuales pueden considerarse durante el proceso de optimización.
+\\
+El desarrollo de esta metodología tiene un amplio campo de aplicación para las tecnologías de fabricación aditiva, como por ejemplo la fabricación SLM (Selective Laser Melting), debido a las grandes posibilidades en términos de diseño (geometrías muy complejas).\cite{ff2}
+
+\section{Definicion de la forma geométrica.}\label{intro} % seccion y etiqueta
+\\
+Una prótesis se define como un dispositivo externo que sirve para reemplazar la falta parcial o total de un órgano o miembro con un objeto artificial, este busca cumplir las mismas funciones que la parte faltante. Desde los comienzos de la humanidad se han utilizado dispositivos artificiales para suplir estos miembros faltantes ya sean ocasionados por guerras, accidentes o incluso malformaciones de nacimiento. En el proceso de diseño de esta prótesis se decidió fijar la geometría y variar los materiales de los cuales se puede construir, la alternativa era fijar los materiales y el proceso de manufactura y variar la geometría.
+\\
+
+
+\section{Estado del arte}
+Objetivo: Dar a conocer cada una de las secciones que integran el código de optimización topológica de 99 líneas en Matlab, saber ejecutar el análisis del código y observar los resultados obtenidos.
+\\
+\\
+Contenido: El artículo presenta una implementación compacta en Matlab de un código de optimización topológica para la minimización de la conformidad de estructuras cargadas estáticamente. El número total de líneas de entrada de Matlab es de 99 incluyendo el optimizador y la subrutina de elementos finitos. Las 99 líneas están divididas en 36 líneas para el programa principal, 12 líneas para el optimizador basado en criterios de optimización, 16 líneas para un filtro de dependencia de malla y 35 líneas para el código de elementos finitos. De hecho, excluyendo las líneas de comentario y las asociadas a la salida y a analisis de elemenios tintos se anserva que solo se necesitan 4u ineas de entrada, de Matlab para resolver un problema de optimización topológica bien planteado. Añadiendo tres líneas adicionales, el programa puede resolver problemas con múltiples casos de carga. El código está pensado para
+fines educativos.\cite{ff3}
+
+
+\\
+\section{Procedimiento de la programaci\'{o}n}
+C\'{o}digo 1
+\begin{verbatim}
+%%%% A 99 LINE TOPOLOGY OPTIMIZATION CODE BY OLESIGMUND, OCTOBER 1999 %%%
+function topp(nelx,nely,volfrac,penal,rmin)
+% INITIALIZE
+x(1:nely,1:nelx) = volfrac;
+loop = 0;
+change = 1.;
+% START ITERATION
+while change > 0.01
+loop = loop + 1;
+xold = x;
+% FE-ANALYSIS
+ [U]=FE(nelx,nely,x,penal);
+% OBJECTIVE FUNCTION AND SENSITIVITY ANALYSIS
+ [KE] = lk;
+ c = 0.;
+for ely = 1:nely
+ for elx = 1:nelx
+ n1 = (nely+1)*(elx-1)+ely;
+ n2 = (nely+1)* elx +ely;
+ dc(ely,elx)=0.;
+ for i=1:5
+ Ue = U([2*n1-1;2*n1; 2*n2-1;2*n2; 2*n2+1; 2*n2+2; 
+2*n1+1;2*n1+2],i);
+ c = c + x(ely,elx)^penal*Ue'*KE*Ue;
+ dc(ely,elx) = dc(ely,elx)-penal*x(ely,elx)^(penal-1)* Ue'*KE*Ue;
+ end
+ end
+end
+% FILTERING OF SENSITIVITIES
+[dc] = check(nelx,nely,rmin,x,dc);
+% DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+[x] = OC(nelx,nely,x,volfrac,dc);
+% PRINT RESULTS
+change = max(max(abs(x-xold)));
+disp(['It.:' sprintf('%4i',loop) 'Obj.:' sprintf('%10.4f',c) ' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ' ch.: ' sprintf('%6.3f',change )])
+% PLOT DENSITIES
+colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
+end
+%%%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%
+function [xnew]=OC(nelx,nely,x,volfrac,dc)
+l1 = 0; l2 = 100000; move = 0.2;
+while (l2-l1 > 1e-4)
+lmid = 0.5*(l2+l1);
+xnew = max(0.001,max(x-move,min(1.,min(x+move,x.*sqrt(-dc./lmid)))));
+if sum(sum(xnew)) - volfrac*nelx*nely > 0;
+l1 = lmid;
+else
+l2 = lmid;
+end
+end
+%%%%%%%%%%%%%%MESH-INDEPENDENCY FILTER%%%%%%%%%%%%%
+function [dcn]=check(nelx,nely,rmin,x,dc)
+dcn=zeros(nely,nelx);
+for i = 1:nelx
+for j = 1:nely
+sum=0.0;
+for k = max(i-round(rmin),1):min(i+round(rmin),nelx)
+for l = max(j-round(rmin),1):min(j+round(rmin), nely)
+fac = rmin-sqrt((i-k)^2+(j-l)^2);
+sum = sum+max(0,fac);
+dcn(j,i) = dcn(j,i) + max(0,fac)*x(l,k)*dc(l,k);
+end
+end
+dcn(j,i) = dcn(j,i)/(x(j,i)*sum);
+end
+end
+%%%%%%%%%% FE-ANALYSIS %%%%%%%%%%%%
+function [U]=FE(nelx,nely,x,penal)
+[KE] = lk;
+K = sparse(2*(nelx+1)*(nely+1), 2*(nelx+1)*(nely+1));
+F = sparse(2*(nely+1)*(nelx+1),5); U =sparse(2*(nely+1)*(nelx+1),5);
+for ely = 1:nely
+for elx = 1:nelx
+n1 = (nely+1)*(elx-1)+ely;
+n2 = (nely+1)* elx +ely;
+edof = [2*n1-1; 2*n1; 2*n2-1; 2*n2; 2*n2+1;2*n2+2;2*n1+1; 2*n1+2];
+K(edof,edof) = K(edof,edof) + x(ely,elx)^penal*KE;
+end
+end
+% DEFINE LOADSAND SUPPORTS(HALF MBB-BEAM)
+F(3222,1) = -1;
+F(3782,2) = -1;
+F(2662,3) = -1;
+F(2942,4) = -1;
+F(3502,5) = -1;
+fixeddofs = union([560:2*(nely+1):1260],[3920:2*(nely+1):4620]);
+alldofs = [1:2*(nely+1)*(nelx+1)];
+freedofs = setdiff(alldofs,fixeddofs);
+% SOLVING 127
+U(freedofs,:) = K(freedofs,freedofs) \F(freedofs,:);
+U(fixeddofs,:)= 0;
+%%%%%%%%%% ELEMENT STIFFNESS MATRIX %%%%%%%
+function [KE]=lk
+E = 1.;
+nu = 0.3;
+k=[ 1/2-nu/6 1/8+nu/8 -1/4-nu/12 -1/8+3*nu/8 ...
+-1/4+nu/12 -1/8-nu/8 nu/6 1/8-3*nu/8];
+KE = E/(1-nu^2)*[ k(1) k(2) k(3) k(4) k(5) k(6) k(7) k(8)
+k(2) k(1) k(8) k(7) k(6) k(5) k(4) k(3)
+k(3) k(8) k(1) k(6) k(7) k(4) k(5) k(2)
+k(4) k(7) k(6) k(1) k(8) k(3) k(2) k(5)
+k(5) k(6) k(7) k(8) k(1) k(2) k(3) k(4)
+k(6) k(5) k(4) k(3) k(2) k(1) k(8) k(7)
+k(7) k(4) k(5) k(2) k(3) k(8) k(1) k(6)
+k(8) k(3) k(2) k(5) k(4) k(7) k(6) k(1)];
+
+\end{verbatim}
+
+C\'{o}digo 2
+\begin{verbatim}
+%%%% A 99 LINE TOPOLOGY OPTIMIZATION CODE BY OLESIGMUND, OCTOBER 1999 %%%
+function topp(nelx,nely,volfrac,penal,rmin);
+% INITIALIZE
+x(1:nely,1:nelx) = volfrac;
+loop = 0;
+change = 1.;
+% START ITERATION
+while change > 0.01
+loop = loop + 1;
+xold = x;
+% FE-ANALYSIS
+ [U]=FE(nelx,nely,x,penal);
+% OBJECTIVE FUNCTION AND SENSITIVITY ANALYSIS
+ [KE] = lk;
+ c = 0.;
+for ely = 1:nely
+ for elx = 1:nelx
+ n1 = (nely+1)*(elx-1)+ely;
+ n2 = (nely+1)* elx +ely;
+ dc(ely,elx)=0.;
+ for i=1:5
+ Ue = U([2*n1-1;2*n1; 2*n2-1;2*n2; 2*n2+1; 2*n2+2; 
+2*n1+1;2*n1+2],i);
+ c = c + x(ely,elx)^penal*Ue'*KE*Ue;
+ dc(ely,elx) = dc(ely,elx)-penal*x(ely,elx)^(penal-1)*Ue'*KE*Ue;
+ end
+ end
+end
+% FILTERING OF SENSITIVITIES
+[dc] = check(nelx,nely,rmin,x,dc);
+% DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+[x] = OC(nelx,nely,x,volfrac,dc);
+% PRINT RESULTS
+change = max(max(abs(x-xold)));
+disp(['It.:' sprintf('%4i',loop) 'Obj.:' sprintf('%10.4f',c) ...
+' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ...
+' ch.: ' sprintf('%6.3f',change )])
+% PLOT DENSITIES
+colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
+end
+%%%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%
+function [xnew]=OC(nelx,nely,x,volfrac,dc)
+l1 = 0; l2 = 100000; move = 0.2;
+while (l2-l1 > 1e-4)
+lmid = 0.5*(l2+l1);
+xnew = max(0.001,max(x-move,min(1.,min(x+move,x.*sqrt(-dc./lmid)))));
+if sum(sum(xnew)) - volfrac*nelx*nely > 0;
+l1 = lmid;
+else
+l2 = lmid;
+end
+end
+%%%%%%%%%% MESH-INDEPENDENCY FILTER %%%%%%%%%%%
+function [dcn]=check(nelx,nely,rmin,x,dc)
+dcn=zeros(nely,nelx);
+for i = 1:nelx
+for j = 1:nely
+sum=0.0;
+for k = max(i-round(rmin),1):min(i+round(rmin),nelx)
+for l = max(j-round(rmin),1):min(j+round(rmin), nely)
+fac = rmin-sqrt((i-k)^2+(j-l)^2);
+sum = sum+max(0,fac);
+dcn(j,i) = dcn(j,i) + max(0,fac)*x(l,k)*dc(l,k);
+end
+end
+dcn(j,i) = dcn(j,i)/(x(j,i)*sum);
+end
+end
+%%%%%%%%%% FE-ANALYSIS %%%%%%%%%%%%
+function [U]=FE(nelx,nely,x,penal)
+[KE] = lk;
+K = sparse(2*(nelx+1)*(nely+1), 2*(nelx+1)*(nely+1));
+F = sparse(2*(nely+1)*(nelx+1),5); U =sparse(2*(nely+1)*(nelx+1),5);
+for ely = 1:nely
+for elx = 1:nelx
+n1 = (nely+1)*(elx-1)+ely;
+n2 = (nely+1)* elx +ely;
+edof = [2*n1-1; 2*n1; 2*n2-1; 2*n2; 2*n2+1;2*n2+2;2*n1+1; 2*n1+2];
+K(edof,edof) = K(edof,edof) + x(ely,elx)^penal*KE;
+end
+end
+% DEFINE LOADSAND SUPPORTS(HALF MBB-BEAM)
+F(3222,1) = -1;
+F(3782,2) = -1;
+F(2662,3) = -1;
+F(2942,4) = -1;
+F(3502,5) = -1;
+fixeddofs = [3920:2*(nely+1):4620];
+alldofs = [1:2*(nely+1)*(nelx+1)];
+freedofs = setdiff(alldofs,fixeddofs);
+% SOLVING 127
+U(freedofs,:) = K(freedofs,freedofs) \F(freedofs,:);
+U(fixeddofs,:)= 0;
+%%%%%%%%%% ELEMENT STIFFNESS MATRIX %%%%%%%
+function [KE]=lk
+E = 1.;
+nu = 0.3;
+k=[ 1/2-nu/6 1/8+nu/8 -1/4-nu/12 -1/8+3*nu/8 ...
+-1/4+nu/12 -1/8-nu/8 nu/6 1/8-3*nu/8];
+KE = E/(1-nu^2)*[ k(1) k(2) k(3) k(4) k(5) k(6) k(7) k(8)
+k(2) k(1) k(8) k(7) k(6) k(5) k(4) k(3)
+k(3) k(8) k(1) k(6) k(7) k(4) k(5) k(2)
+k(4) k(7) k(6) k(1) k(8) k(3) k(2) k(5)
+k(5) k(6) k(7) k(8) k(1) k(2) k(3) k(4)
+k(6) k(5) k(4) k(3) k(2) k(1) k(8) k(7)
+k(7) k(4) k(5) k(2) k(3) k(8) k(1) k(6)
+k(8) k(3) k(2) k(5) k(4) k(7) k(6) k(1)];
+
+\end{verbatim}
+
+C\'{o}digo 3
+\begin{verbatim}
+%%%% A 99 LINE TOPOLOGY OPTIMIZATION CODE BY OLESIGMUND, OCTOBER 1999 %%%
+function topp3(nelx,nely,volfrac,penal,rmin)
+% INITIALIZE
+x(1:nely,1:nelx) = volfrac;
+loop = 0;
+change = 1.;
+% START ITERATION
+while change > 0.01
+loop = loop + 1;
+xold = x;
+% FE-ANALYSIS
+ [U]=FE(nelx,nely,x,penal);
+% OBJECTIVE FUNCTION AND SENSITIVITY ANALYSIS
+ [KE] = lk;
+ c = 0.;
+for ely = 1:nely
+ for elx = 1:nelx
+ n1 = (nely+1)*(elx-1)+ely;
+ n2 = (nely+1)* elx +ely;
+ dc(ely,elx)=0.;
+ for i=1:5
+ Ue = U([2*n1-1;2*n1; 2*n2-1;2*n2; 2*n2+1; 2*n2+2; 
+2*n1+1;2*n1+2],i);
+ c = c + x(ely,elx)^penal*Ue'*KE*Ue;
+ dc(ely,elx) = dc(ely,elx)-penal*x(ely,elx)^(penal-1)*Ue'*KE*Ue;
+ end
+ end
+end
+% FILTERING OF SENSITIVITIES
+[dc] = check(nelx,nely,rmin,x,dc);
+% DESIGN UPDATE BY THE OPTIMALITY CRITERIA METHOD
+[x] = OC(nelx,nely,x,volfrac,dc);
+% PRINT RESULTS
+change = max(max(abs(x-xold)));
+disp(['It.:' sprintf('%4i',loop) 'Obj.:' sprintf('%10.4f',c) ...
+' Vol.: ' sprintf('%6.3f',sum(sum(x))/(nelx*nely)) ...
+' ch.: ' sprintf('%6.3f',change )])
+% PLOT DENSITIES
+colormap(gray); imagesc(-x); axis equal; axis tight; axis off;pause(1e-6);
+end
+%%%%%%%%%% OPTIMALITY CRITERIA UPDATE %%%%%%%%%
+function [xnew]=OC(nelx,nely,x,volfrac,dc)
+l1 = 0; l2 = 100000; move = 0.2;
+while (l2-l1 > 1e-4)
+lmid = 0.5*(l2+l1);
+xnew = max(0.001,max(x-move,min(1.,min(x+move,x.*sqrt(-dc./lmid)))));
+if sum(sum(xnew)) - volfrac*nelx*nely > 0;
+l1 = lmid;
+else
+l2 = lmid;
+end
+end
+%%%%%%%%%% MESH-INDEPENDENCY FILTER %%%%%%%%%%%
+function [dcn]=check(nelx,nely,rmin,x,dc)
+dcn=zeros(nely,nelx);
+for i = 1:nelx
+for j = 1:nely
+sum=0.0;
+for k = max(i-round(rmin),1):min(i+round(rmin),nelx)
+for l = max(j-round(rmin),1):min(j+round(rmin), nely)
+fac = rmin-sqrt((i-k)^2+(j-l)^2);
+sum = sum+max(0,fac);
+dcn(j,i) = dcn(j,i) + max(0,fac)*x(l,k)*dc(l,k);
+end
+end
+dcn(j,i) = dcn(j,i)/(x(j,i)*sum);
+end
+end
+%%%%%%%%%% FE-ANALYSIS %%%%%%%%%%%%
+function [U]=FE(nelx,nely,x,penal)
+[KE] = lk;
+K = sparse(2*(nelx+1)*(nely+1), 2*(nelx+1)*(nely+1));
+F = sparse(2*(nely+1)*(nelx+1),5); U =sparse(2*(nely+1)*(nelx+1),5);
+for ely = 1:nely
+for elx = 1:nelx
+n1 = (nely+1)*(elx-1)+ely;
+n2 = (nely+1)* elx +ely;
+edof = [2*n1-1; 2*n1; 2*n2-1; 2*n2; 2*n2+1;2*n2+2;2*n1+1; 2*n1+2];
+K(edof,edof) = K(edof,edof) + x(ely,elx)^penal*KE;
+end
+end
+% DEFINE LOADSAND SUPPORTS(HALF MBB-BEAM)
+F(3222,1) = -1;
+F(3782,2) = -1;
+F(2662,3) = -1;
+F(2942,4) = -1;
+F(3502,5) = -1;
+fixeddofs = [560:2*(nely+1):1260];
+alldofs = [1:2*(nely+1)*(nelx+1)];
+freedofs = setdiff(alldofs,fixeddofs);
+% SOLVING 127
+U(freedofs,:) = K(freedofs,freedofs) \F(freedofs,:);
+U(fixeddofs,:)= 0;
+%%%%%%%%%% ELEMENT STIFFNESS MATRIX %%%%%%%
+function [KE]=lk
+E = 1.;
+nu = 0.3;
+k=[ 1/2-nu/6 1/8+nu/8 -1/4-nu/12 -1/8+3*nu/8 ...
+-1/4+nu/12 -1/8-nu/8 nu/6 1/8-3*nu/8];
+KE = E/(1-nu^2)*[ k(1) k(2) k(3) k(4) k(5) k(6) k(7) k(8)
+k(2) k(1) k(8) k(7) k(6) k(5) k(4) k(3)
+k(3) k(8) k(1) k(6) k(7) k(4) k(5) k(2)
+k(4) k(7) k(6) k(1) k(8) k(3) k(2) k(5)
+k(5) k(6) k(7) k(8) k(1) k(2) k(3) k(4)
+k(6) k(5) k(4) k(3) k(2) k(1) k(8) k(7)
+k(7) k(4) k(5) k(2) k(3) k(8) k(1) k(6)
+k(8) k(3) k(2) k(5) k(4) k(7) k(6) k(1)];
+
+\end{verbatim}
+
+\section{Pasos que seguir para la programación en MATLAB}
+\begin{enumerate}
+\item   Abrir MATLAB y esperar a que éste se inicialice, y muestre su pantalla principal. 
+
+\includegraphics[width=60mm]{images/MatLab.png} % archivo
+\includegraphics[width=110mm]{images/MatLab1.png} % archivo\\
+\\
+\\
+\newpage
+\item   Una vez en la pantalla de inicio de MATLAB es necesario abrir un archivo nuevo en el editor de texto, dentro del cual será necesario escribir el código proporcionado.(Los pasos se repetirán para cada código)
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=100mm]{images/Codigo1.png} % archivo
+    \caption{C\'{o}digo 1}
+\end{figure}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=120mm]{images/Codigo2.png} % archivo
+    \caption{C\'{o}digo 2}
+\end{figure}
+
+\newpage
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=120mm]{images/Codigo3.png} % archivo
+    \caption{C\'{o}digo 3}
+\end{figure}
+
+\newpage
+
+\item   El siguiente paso consiste en salvar el archivo. Se recomienda que el archivo se guarde en el directorio raíz de MATLAB que por default muestra. En caso de no ser así, debemos de navegar a “Mis Documentos  MATLAB” y guardar ahí el script recién creado. 
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=40mm]{images/MatLab2.png} % archivo
+    \caption{Como salvar un archivo}
+\end{figure}
+
+
+\item   Una vez guardado el script en el directorio correcto, solo hace falta corroborar que el intérprete de MATLAB se encuentre en el mismo directorio. Esto se hace desde la pantalla principal de MATLAB. Para la versión R2019a del software, el directorio actual del intérprete se encuentra en la barra de herramientas superior.
+
+
+
+\item   Por último, hay que ejecutar el programa desde la ventana de comando de MATLAB. El código que se proporcionó viene preparado para optimizar un dominio de diseño, este caso en particular es evaluado y simulado cuando escribimos desde la línea de comando de MATLAB “topp(72,34,0.33,3.0,1.5)”.
+\begin{itemize}
+  \item nelx y nely: Son el número de elementos en las direcciones horizontales (x) y verticales (y). 
+   \item	volfrac: Es la fracción de volumen. 
+   \item	penal: Es el poder de penalización. 
+   \item	rmi: Es un radio de filtro para un filtro que hace que el diseño de malla-independiente.
+\end{itemize}
+
+\end{enumerate}
+
+\newpage
+
+\section{Resultados de la optimización}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=80mm]{images/R1.png} % archivo
+    \caption{Resultados c\'{o}digo 1}
+\end{figure}
+
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=80mm]{images/R2.png} % archivo
+    \caption{Resultados c\'{o}digo 2}
+\end{figure}
+
+\begin{figure}[h] % figura
+    \centering
+    \includegraphics[width=79mm]{images/R3.png} % archivo
+    \caption{Resultados c\'{o}digo 3}
+\end{figure}
+
+\newpage
+
+\section{Conclusiones}
+
+Christopher Alejandro Monsivais Ramos: 
+\\En esta práctica reforzamos principalmente los conocimientos que se fueron adquiriendo a cerca de los códigos de optimización topologica, solo que esta vez se le realizaron distintos cambios para poder obtener como resultado la pieza final. Esto creo que es de mucha ayuda ya que nos mantiene en constante práctica del software de Matlab.
+\\
+\\
+Alessandra Gonzalez Torres: 
+\\En esta práctica continuamos utilizando el código original que se vio en la primera práctica, solo que se tuvieron que hacer ciertas modificaciones para que se acoplara a lo pedido en la práctica actual. También se tuvieron que cambiar los valores que antes se estaban utilizando para poder crear las piezas finales, como se muestran en la última imagen. 
+\\
+\\
+Angela Itzel Rodriguez Torres: 
+\\En esta práctica utilizamos Matlab, nos damos cuenta de que los softwares de hoy en día nos apoyan mucho con cálculos e impresiones que nos facilitan el poder generar nuevas ideas e ir más rápido en nuestras investigaciones, así mismo generar el análisis de elemento finito para el diseño de una prótesis de pie y lo importante que puede ser para lugares de venta pueda ser una mejor producción debido a que es un mejor producto e innovador.
+\\
+\\
+Abdiel Isaac Rodriguez Piñales: 
+\\Se concluye que los avances de tecnología han sido tales que se ha conseguido la optimización de los nuevos diseños. Como en el método de optimización topológica la cual sirve para reducir los materiales a utilizar los nuevos diseños. Esto ha sido útil en áreas como la ingeniería aeroespacial donde es crucial el volumen y materia de los componentes a utilizar. Todo es gracias al avance en el desarrollo de software. 
+\\
+\\
+Alejandro Sebastian Marin Cota: 
+\\Se concluyó que los avances tecnológicos permitieron la optimización de nuevos diseños. Al igual que las técnicas de optimización de topología, minimiza el uso de materiales rediseñados. Esto es útil en áreas como la ingeniería aeroespacial, donde el tamaño y el material de los componentes que se utilizarán es crítico. Todo gracias a los avances en el desarrollo de software.
+\\
+\\
+Mart\'{i}n Alejandro Villanueva Cortes:
+\\Tanto esta practica como las anteriores se ha seguido usando el mismo procedimiento para realizar las optimizaciones de cada una de las piezas que se nos han pedido lo cual nos permite obtener los resultados mostrados con solo cambiar unas partes del código en MatLab.
+
+\bibliography{bib}
+\bibliographystyle{plainnat}
+
+\end{document}
